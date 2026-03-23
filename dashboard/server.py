@@ -11,7 +11,7 @@ Endpoints:
   GET  /api/model-change-log   → data/model_change_log.json
   GET  /api/last-result        → data/last_model_change_result.json
 """
-import json, pathlib, subprocess, sys, threading, argparse, datetime, logging, re, os
+import json, pathlib, subprocess, sys, threading, argparse, datetime, logging, re, os, traceback
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -651,17 +651,17 @@ def handle_review_action(task_id, action, comment=''):
 # ══ Agent 在线状态检测 ══
 
 _AGENT_DEPTS = [
-    {'id':'taizi',   'label':'太子',  'emoji':'🤴', 'role':'太子',     'rank':'储君'},
-    {'id':'zhongshu','label':'中书省','emoji':'📜', 'role':'中书令',   'rank':'正一品'},
-    {'id':'menxia',  'label':'门下省','emoji':'🔍', 'role':'侍中',     'rank':'正一品'},
-    {'id':'shangshu','label':'尚书省','emoji':'📮', 'role':'尚书令',   'rank':'正一品'},
-    {'id':'hubu',    'label':'户部',  'emoji':'💰', 'role':'户部尚书', 'rank':'正二品'},
-    {'id':'libu',    'label':'礼部',  'emoji':'📝', 'role':'礼部尚书', 'rank':'正二品'},
-    {'id':'bingbu',  'label':'兵部',  'emoji':'⚔️', 'role':'兵部尚书', 'rank':'正二品'},
-    {'id':'xingbu',  'label':'刑部',  'emoji':'⚖️', 'role':'刑部尚书', 'rank':'正二品'},
-    {'id':'gongbu',  'label':'工部',  'emoji':'🔧', 'role':'工部尚书', 'rank':'正二品'},
-    {'id':'libu_hr', 'label':'吏部',  'emoji':'👔', 'role':'吏部尚书', 'rank':'正二品'},
-    {'id':'zaochao', 'label':'钦天监','emoji':'📰', 'role':'朝报官',   'rank':'正三品'},
+    {'id':'taizi',   'label':'太子',  'emoji':'🤴', 'role':'Imperial Intake Heir',        'rank':'Crown Interface'},
+    {'id':'zhongshu','label':'中书省','emoji':'📜', 'role':'Reichsgraf der Strategie',    'rank':'Grand Count'},
+    {'id':'menxia',  'label':'门下省','emoji':'🔍', 'role':'Reichsgraf der Revision',     'rank':'Grand Count'},
+    {'id':'shangshu','label':'尚书省','emoji':'📮', 'role':'Reichsgraf der Exekution',    'rank':'Grand Count'},
+    {'id':'hubu',    'label':'户部',  'emoji':'💰', 'role':'Graf der Reichsschatzkammer', 'rank':'Count'},
+    {'id':'libu',    'label':'礼部',  'emoji':'📝', 'role':'Graf des Reichsarchivs',      'rank':'Count'},
+    {'id':'bingbu',  'label':'兵部',  'emoji':'⚔️', 'role':'Graf der Festungsbauten',     'rank':'Count'},
+    {'id':'xingbu',  'label':'刑部',  'emoji':'⚖️', 'role':'Graf der Inquisition',        'rank':'Count'},
+    {'id':'gongbu',  'label':'工部',  'emoji':'🔧', 'role':'Kriegsgraf der Konstrukte',   'rank':'War Count'},
+    {'id':'libu_hr', 'label':'吏部',  'emoji':'👔', 'role':'Graf der Beamten',            'rank':'Count'},
+    {'id':'zaochao', 'label':'钦天监','emoji':'📰', 'role':'Imperial Dawn Herald',        'rank':'Special Office'},
 ]
 
 
@@ -1952,9 +1952,9 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
                     'lastDispatchTrigger': trigger,
                 }))
                 return
-            # Fix #139: dispatch channel 可配置（默认 feishu，支持 telegram/wecom/signal 等）
+            # Fix #139: dispatch channel 可配置（默认 telegram，支持 feishu/wecom/signal 等）
             _agent_cfg = read_json(DATA / 'agent_config.json', {})
-            _channel = (_agent_cfg.get('dispatchChannel') or 'feishu').strip()
+            _channel = (_agent_cfg.get('dispatchChannel') or 'telegram').strip()
             cmd = ['openclaw', 'agent', '--agent', agent_id, '-m', msg,
                    '--deliver', '--channel', _channel, '--timeout', '300']
             max_retries = 2
@@ -2104,6 +2104,9 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         except (BrokenPipeError, ConnectionResetError):
             pass
+        except Exception as e:
+            log.exception(f'Failed to send file {path}: {e}')
+            raise
 
     def _serve_static(self, rel_path):
         """从 dist/ 目录提供静态文件。"""
@@ -2119,94 +2122,102 @@ class Handler(BaseHTTPRequestHandler):
         return False
 
     def do_GET(self):
-        p = urlparse(self.path).path.rstrip('/')
-        if p in ('', '/dashboard', '/dashboard.html'):
-            self.send_file(DIST / 'index.html')
-        elif p == '/healthz':
-            checks = {'dataDir': DATA.is_dir(), 'tasksReadable': (DATA / 'tasks_source.json').exists()}
-            checks['dataWritable'] = os.access(str(DATA), os.W_OK)
-            all_ok = all(checks.values())
-            self.send_json({'status': 'ok' if all_ok else 'degraded', 'ts': now_iso(), 'checks': checks})
-        elif p == '/api/live-status':
-            self.send_json(read_json(DATA / 'live_status.json'))
-        elif p == '/api/agent-config':
-            self.send_json(read_json(DATA / 'agent_config.json'))
-        elif p == '/api/model-change-log':
-            self.send_json(read_json(DATA / 'model_change_log.json', []))
-        elif p == '/api/last-result':
-            self.send_json(read_json(DATA / 'last_model_change_result.json', {}))
-        elif p == '/api/officials-stats':
-            self.send_json(read_json(DATA / 'officials_stats.json', {}))
-        elif p == '/api/morning-brief':
-            self.send_json(read_json(DATA / 'morning_brief.json', {}))
-        elif p == '/api/morning-config':
-            self.send_json(read_json(DATA / 'morning_brief_config.json', {
-                'categories': [
-                    {'name': '政治', 'enabled': True},
-                    {'name': '军事', 'enabled': True},
-                    {'name': '经济', 'enabled': True},
-                    {'name': 'AI大模型', 'enabled': True},
-                ],
-                'keywords': [], 'custom_feeds': [], 'feishu_webhook': '',
-            }))
-        elif p.startswith('/api/morning-brief/'):
-            date = p.split('/')[-1]
-            # 标准化日期格式为 YYYYMMDD（兼容 YYYY-MM-DD 输入）
-            date_clean = date.replace('-', '')
-            if not date_clean.isdigit() or len(date_clean) != 8:
-                self.send_json({'ok': False, 'error': f'日期格式无效: {date}，请使用 YYYYMMDD'}, 400)
-                return
-            self.send_json(read_json(DATA / f'morning_brief_{date_clean}.json', {}))
-        elif p == '/api/remote-skills-list':
-            self.send_json(get_remote_skills_list())
-        elif p.startswith('/api/skill-content/'):
-            # /api/skill-content/{agentId}/{skillName}
-            parts = p.replace('/api/skill-content/', '').split('/', 1)
-            if len(parts) == 2:
-                self.send_json(read_skill_content(parts[0], parts[1]))
-            else:
-                self.send_json({'ok': False, 'error': 'Usage: /api/skill-content/{agentId}/{skillName}'}, 400)
-        elif p.startswith('/api/task-activity/'):
-            task_id = p.replace('/api/task-activity/', '')
-            if not task_id:
-                self.send_json({'ok': False, 'error': 'task_id required'}, 400)
-            else:
-                self.send_json(get_task_activity(task_id))
-        elif p.startswith('/api/scheduler-state/'):
-            task_id = p.replace('/api/scheduler-state/', '')
-            if not task_id:
-                self.send_json({'ok': False, 'error': 'task_id required'}, 400)
-            else:
-                self.send_json(get_scheduler_state(task_id))
-        elif p == '/api/agents-status':
-            self.send_json(get_agents_status())
-        elif p.startswith('/api/agent-activity/'):
-            agent_id = p.replace('/api/agent-activity/', '')
-            if not agent_id or not _SAFE_NAME_RE.match(agent_id):
-                self.send_json({'ok': False, 'error': 'invalid agent_id'}, 400)
-            else:
-                self.send_json({'ok': True, 'agentId': agent_id, 'activity': get_agent_activity(agent_id)})
-        # ── 朝堂议政 ──
-        elif p == '/api/court-discuss/list':
-            self.send_json({'ok': True, 'sessions': cd_list()})
-        elif p == '/api/court-discuss/officials':
-            self.send_json({'ok': True, 'officials': CD_PROFILES})
-        elif p.startswith('/api/court-discuss/session/'):
-            sid = p.replace('/api/court-discuss/session/', '')
-            data = cd_get(sid)
-            self.send_json(data if data else {'ok': False, 'error': 'session not found'}, 200 if data else 404)
-        elif p == '/api/court-discuss/fate':
-            self.send_json({'ok': True, 'event': cd_fate()})
-        elif self._serve_static(p):
-            pass  # 已由 _serve_static 处理 (JS/CSS/图片等)
-        else:
-            # SPA fallback：非 /api/ 路径返回 index.html
-            if not p.startswith('/api/'):
-                idx = DIST / 'index.html'
-                if idx.exists():
-                    self.send_file(idx)
+        try:
+            p = urlparse(self.path).path.rstrip('/')
+            if p in ('', '/dashboard', '/dashboard.html'):
+                self.send_file(DIST / 'index.html')
+            elif p == '/healthz':
+                checks = {'dataDir': DATA.is_dir(), 'tasksReadable': (DATA / 'tasks_source.json').exists()}
+                checks['dataWritable'] = os.access(str(DATA), os.W_OK)
+                all_ok = all(checks.values())
+                self.send_json({'status': 'ok' if all_ok else 'degraded', 'ts': now_iso(), 'checks': checks})
+            elif p == '/api/live-status':
+                self.send_json(read_json(DATA / 'live_status.json'))
+            elif p == '/api/agent-config':
+                self.send_json(read_json(DATA / 'agent_config.json'))
+            elif p == '/api/model-change-log':
+                self.send_json(read_json(DATA / 'model_change_log.json', []))
+            elif p == '/api/last-result':
+                self.send_json(read_json(DATA / 'last_model_change_result.json', {}))
+            elif p == '/api/officials-stats':
+                self.send_json(read_json(DATA / 'officials_stats.json', {}))
+            elif p == '/api/morning-brief':
+                self.send_json(read_json(DATA / 'morning_brief.json', {}))
+            elif p == '/api/morning-config':
+                self.send_json(read_json(DATA / 'morning_brief_config.json', {
+                    'categories': [
+                        {'name': '政治', 'enabled': True},
+                        {'name': '军事', 'enabled': True},
+                        {'name': '经济', 'enabled': True},
+                        {'name': 'AI大模型', 'enabled': True},
+                    ],
+                    'keywords': [], 'custom_feeds': [], 'feishu_webhook': '',
+                }))
+            elif p.startswith('/api/morning-brief/'):
+                date = p.split('/')[-1]
+                # 标准化日期格式为 YYYYMMDD（兼容 YYYY-MM-DD 输入）
+                date_clean = date.replace('-', '')
+                if not date_clean.isdigit() or len(date_clean) != 8:
+                    self.send_json({'ok': False, 'error': f'日期格式无效: {date}，请使用 YYYYMMDD'}, 400)
                     return
-            self.send_error(404)
+                self.send_json(read_json(DATA / f'morning_brief_{date_clean}.json', {}))
+            elif p == '/api/remote-skills-list':
+                self.send_json(get_remote_skills_list())
+            elif p.startswith('/api/skill-content/'):
+                # /api/skill-content/{agentId}/{skillName}
+                parts = p.replace('/api/skill-content/', '').split('/', 1)
+                if len(parts) == 2:
+                    self.send_json(read_skill_content(parts[0], parts[1]))
+                else:
+                    self.send_json({'ok': False, 'error': 'Usage: /api/skill-content/{agentId}/{skillName}'}, 400)
+            elif p.startswith('/api/task-activity/'):
+                task_id = p.replace('/api/task-activity/', '')
+                if not task_id:
+                    self.send_json({'ok': False, 'error': 'task_id required'}, 400)
+                else:
+                    self.send_json(get_task_activity(task_id))
+            elif p.startswith('/api/scheduler-state/'):
+                task_id = p.replace('/api/scheduler-state/', '')
+                if not task_id:
+                    self.send_json({'ok': False, 'error': 'task_id required'}, 400)
+                else:
+                    self.send_json(get_scheduler_state(task_id))
+            elif p == '/api/agents-status':
+                self.send_json(get_agents_status())
+            elif p.startswith('/api/agent-activity/'):
+                agent_id = p.replace('/api/agent-activity/', '')
+                if not agent_id or not _SAFE_NAME_RE.match(agent_id):
+                    self.send_json({'ok': False, 'error': 'invalid agent_id'}, 400)
+                else:
+                    self.send_json({'ok': True, 'agentId': agent_id, 'activity': get_agent_activity(agent_id)})
+            # ── 朝堂议政 ──
+            elif p == '/api/court-discuss/list':
+                self.send_json({'ok': True, 'sessions': cd_list()})
+            elif p == '/api/court-discuss/officials':
+                self.send_json({'ok': True, 'officials': CD_PROFILES})
+            elif p.startswith('/api/court-discuss/session/'):
+                sid = p.replace('/api/court-discuss/session/', '')
+                data = cd_get(sid)
+                self.send_json(data if data else {'ok': False, 'error': 'session not found'}, 200 if data else 404)
+            elif p == '/api/court-discuss/fate':
+                self.send_json({'ok': True, 'event': cd_fate()})
+            elif self._serve_static(p):
+                pass  # 已由 _serve_static 处理 (JS/CSS/图片等)
+            else:
+                # SPA fallback：非 /api/ 路径返回 index.html
+                if not p.startswith('/api/'):
+                    idx = DIST / 'index.html'
+                    if idx.exists():
+                        self.send_file(idx)
+                        return
+                self.send_error(404)
+        except Exception as e:
+            log.error(f'Unhandled GET error on {self.path}: {e}')
+            log.error(traceback.format_exc())
+            try:
+                self.send_json({'ok': False, 'error': 'internal server error'}, 500)
+            except Exception:
+                return
 
     def do_POST(self):
         p = urlparse(self.path).path.rstrip('/')
@@ -2400,7 +2411,7 @@ class Handler(BaseHTTPRequestHandler):
         if p == '/api/create-task':
             title = body.get('title', '').strip()
             org = body.get('org', '中书省').strip()
-            official = body.get('official', '中书令').strip()
+            official = body.get('official', 'Reichsgraf der Strategie').strip()
             priority = body.get('priority', 'normal').strip()
             template_id = body.get('templateId', '')
             params = body.get('params', {})
