@@ -2090,6 +2090,17 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError):
             pass
 
+    def send_head_file(self, path: pathlib.Path, mime='text/html; charset=utf-8'):
+        if not path.exists():
+            self.send_error(404)
+            return
+        size = path.stat().st_size
+        self.send_response(200)
+        self.send_header('Content-Type', mime)
+        self.send_header('Content-Length', str(size))
+        cors_headers(self)
+        self.end_headers()
+
     def send_file(self, path: pathlib.Path, mime='text/html; charset=utf-8'):
         if not path.exists():
             self.send_error(404)
@@ -2120,6 +2131,48 @@ class Handler(BaseHTTPRequestHandler):
             self.send_file(fp, mime)
             return True
         return False
+
+    def _serve_static_head(self, rel_path):
+        safe = rel_path.replace('\\', '/').lstrip('/')
+        if '..' in safe:
+            self.send_error(403)
+            return True
+        fp = DIST / safe
+        if fp.is_file():
+            mime = _MIME_TYPES.get(fp.suffix.lower(), 'application/octet-stream')
+            self.send_head_file(fp, mime)
+            return True
+        return False
+
+    def do_HEAD(self):
+        try:
+            p = urlparse(self.path).path.rstrip('/')
+            if p in ('', '/dashboard', '/dashboard.html'):
+                self.send_head_file(DIST / 'index.html')
+            elif p == '/healthz':
+                body = json.dumps({'status': 'ok', 'ts': now_iso()}, ensure_ascii=False).encode()
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.send_header('Content-Length', str(len(body)))
+                cors_headers(self)
+                self.end_headers()
+            elif self._serve_static_head(p):
+                pass
+            elif not p.startswith('/api/'):
+                idx = DIST / 'index.html'
+                if idx.exists():
+                    self.send_head_file(idx)
+                else:
+                    self.send_error(404)
+            else:
+                self.send_error(404)
+        except Exception as e:
+            log.error(f'Unhandled HEAD error on {self.path}: {e}')
+            log.error(traceback.format_exc())
+            try:
+                self.send_error(500)
+            except Exception:
+                return
 
     def do_GET(self):
         try:
