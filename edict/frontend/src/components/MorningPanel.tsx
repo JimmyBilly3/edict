@@ -3,11 +3,11 @@ import { useStore } from '../store';
 import { api } from '../api';
 import type { SubConfig, MorningNewsItem } from '../api';
 
-const CAT_META: Record<string, { icon: string; color: string; desc: string }> = {
-  '政治': { icon: '🏛️', color: '#6a9eff', desc: '全球政治动态' },
-  '军事': { icon: '⚔️', color: '#ff5270', desc: '军事与冲突' },
-  '经济': { icon: '💹', color: '#2ecc8a', desc: '经济与市场' },
-  'AI大模型': { icon: '🤖', color: '#a07aff', desc: 'AI与大模型进展' },
+const CAT_META: Record<string, { icon: string; color: string; desc: string; label: string }> = {
+  '政治': { icon: '🏛️', color: '#6a9eff', desc: 'ความเคลื่อนไหวการเมืองทั่วหล้า', label: 'การเมือง' },
+  '军事': { icon: '⚔️', color: '#ff5270', desc: 'ศึกสงครามและความมั่นคง', label: 'การทหาร' },
+  '经济': { icon: '💹', color: '#2ecc8a', desc: 'เศรษฐกิจและความเป็นไปของตลาด', label: 'เศรษฐกิจ' },
+  'AI大模型': { icon: '🤖', color: '#a07aff', desc: 'ความก้าวหน้าด้าน AI และโมเดลขนาดใหญ่', label: 'AI โมเดลใหญ่' },
 };
 
 const DEFAULT_CATS = ['政治', '军事', '经济', 'AI大模型'];
@@ -22,7 +22,7 @@ export default function MorningPanel() {
   const [showConfig, setShowConfig] = useState(false);
   const [localConfig, setLocalConfig] = useState<SubConfig | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshLabel, setRefreshLabel] = useState('⟳ 立即采集');
+  const [refreshLabel, setRefreshLabel] = useState('⟳ เรียกข่าวเดี๋ยวนี้');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function MorningPanel() {
 
   const refreshNews = async () => {
     setRefreshing(true);
-    setRefreshLabel('⟳ 采集中…');
+    setRefreshLabel('⟳ กำลังรวบรวม…');
     let lastDate: string | null = null;
     try {
       lastDate = morningBrief?.generated_at || null;
@@ -49,7 +49,7 @@ export default function MorningPanel() {
 
     try {
       await api.refreshMorning();
-      toast('采集已触发，自动检测更新中…', 'ok');
+      toast('เริ่มเก็บข่าวแล้ว ระบบจะตรวจการอัปเดตให้อัตโนมัติ…', 'ok');
       let count = 0;
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = setInterval(async () => {
@@ -58,8 +58,8 @@ export default function MorningPanel() {
           clearInterval(pollRef.current!);
           pollRef.current = null;
           setRefreshing(false);
-          setRefreshLabel('⟳ 立即采集');
-          toast('采集超时，请重试', 'err');
+          setRefreshLabel('⟳ เรียกข่าวเดี๋ยวนี้');
+          toast('เก็บข่าวเกินเวลา โปรดลองอีกครั้ง', 'err');
           return;
         }
         try {
@@ -68,18 +68,18 @@ export default function MorningPanel() {
             clearInterval(pollRef.current!);
             pollRef.current = null;
             setRefreshing(false);
-            setRefreshLabel('⟳ 立即采集');
+            setRefreshLabel('⟳ เรียกข่าวเดี๋ยวนี้');
             loadMorning();
-            toast('✅ 天下要闻已更新', 'ok');
+            toast('✅ ข่าวยามเช้าอัปเดตแล้ว', 'ok');
           } else {
-            setRefreshLabel(`⟳ 采集中… (${count * 5}s)`);
+            setRefreshLabel(`⟳ กำลังรวบรวม… (${count * 5}s)`);
           }
         } catch { /* */ }
       }, 5000);
     } catch {
-      toast('触发失败', 'err');
+      toast('เริ่มเก็บข่าวไม่สำเร็จ', 'err');
       setRefreshing(false);
-      setRefreshLabel('⟳ 立即采集');
+      setRefreshLabel('⟳ เรียกข่าวเดี๋ยวนี้');
     }
   };
 
@@ -109,7 +109,7 @@ export default function MorningPanel() {
 
   const addFeed = (name: string, url: string, category: string) => {
     if (!localConfig || !name || !url) {
-      toast('请填写源名称和URL', 'err');
+      toast('โปรดกรอกชื่อแหล่งข่าวและ URL', 'err');
       return;
     }
     const feeds = [...(localConfig.custom_feeds || [])];
@@ -129,13 +129,13 @@ export default function MorningPanel() {
     try {
       const r = await api.saveMorningConfig(localConfig);
       if (r.ok) {
-        toast('订阅配置已保存', 'ok');
+        toast('บันทึกการตั้งค่าการติดตามแล้ว', 'ok');
         loadSubConfig();
       } else {
-        toast(r.error || '保存失败', 'err');
+        toast(r.error || 'บันทึกไม่สำเร็จ', 'err');
       }
     } catch {
-      toast('服务器连接失败', 'err');
+      toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err');
     }
   };
 
@@ -155,11 +155,11 @@ export default function MorningPanel() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>🌅 天下要闻</div>
+          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>🌅 ข่าวยามเช้า</div>
           <div style={{ fontSize: 12, color: 'var(--muted)' }}>
             {dateStr && `${dateStr} | `}
-            {morningBrief?.generated_at && `采集于 ${morningBrief.generated_at} | `}
-            共 {totalNews} 条要闻
+            {morningBrief?.generated_at && `รวบรวมเมื่อ ${morningBrief.generated_at} | `}
+            รวมข่าวสำคัญ {totalNews} เรื่อง
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -168,7 +168,7 @@ export default function MorningPanel() {
             onClick={() => setShowConfig(!showConfig)}
             style={{ fontSize: 12, padding: '6px 14px' }}
           >
-            ⚙ 订阅配置
+            ⚙ ตั้งค่าการติดตาม
           </button>
           <button
             className="tpl-go"
@@ -198,12 +198,12 @@ export default function MorningPanel() {
 
       {/* News */}
       {!Object.keys(cats).length ? (
-        <div className="mb-empty">暂无数据，点击右上角「立即采集」获取今日简报</div>
+        <div className="mb-empty">ยังไม่มีข้อมูล กด "เรียกข่าวเดี๋ยวนี้" มุมขวาบนเพื่อรับสรุปของวันนี้</div>
       ) : (
         <div className="mb-cats">
           {Object.entries(cats).map(([cat, items]) => {
             if (!enabledSet.has(cat)) return null;
-            const meta = CAT_META[cat] || { icon: '📰', color: 'var(--acc)', desc: cat };
+            const meta = CAT_META[cat] || { icon: '📰', color: 'var(--acc)', desc: cat, label: cat };
             const scored = (items as MorningNewsItem[])
               .map((item) => {
                 const text = ((item.title || '') + (item.summary || '')).toLowerCase();
@@ -216,12 +216,12 @@ export default function MorningPanel() {
               <div className="mb-cat" key={cat}>
                 <div className="mb-cat-hdr">
                   <span className="mb-cat-icon">{meta.icon}</span>
-                  <span className="mb-cat-name" style={{ color: meta.color }}>{cat}</span>
-                  <span className="mb-cat-cnt">{scored.length} 条</span>
+                  <span className="mb-cat-name" style={{ color: meta.color }}>{meta.label}</span>
+                  <span className="mb-cat-cnt">{scored.length} เรื่อง</span>
                 </div>
                 <div className="mb-news-list">
                   {!scored.length ? (
-                    <div className="mb-empty" style={{ padding: 16 }}>暂无新闻</div>
+                    <div className="mb-empty" style={{ padding: 16 }}>ยังไม่มีข่าว</div>
                   ) : (
                     scored.map((item, i) => {
                       const hasImg = !!(item.image && item.image.startsWith('http'));
@@ -260,7 +260,7 @@ export default function MorningPanel() {
                                     marginLeft: 4,
                                   }}
                                 >
-                                  ⭐ 关注
+                                  ⭐ น่าจับตา
                                 </span>
                               )}
                             </div>
@@ -319,14 +319,14 @@ function SubConfigPanel({
 
   return (
     <div className="sub-config" style={{ marginBottom: 20, padding: 16, background: 'var(--panel2)', borderRadius: 12, border: '1px solid var(--line)' }}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>⚙ 订阅配置</div>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>⚙ ตั้งค่าการติดตาม</div>
 
       {/* Categories */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>订阅分类</div>
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>หมวดที่ติดตาม</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {allCats.map((cat) => {
-            const meta = CAT_META[cat] || { icon: '📰', color: 'var(--acc)', desc: cat };
+            const meta = CAT_META[cat] || { icon: '📰', color: 'var(--acc)', desc: cat, label: cat };
             const on = enabledSet.has(cat);
             return (
               <div
@@ -336,7 +336,7 @@ function SubConfigPanel({
                 style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 8, border: `1px solid ${on ? 'var(--acc)' : 'var(--line)'}`, display: 'flex', alignItems: 'center', gap: 6 }}
               >
                 <span>{meta.icon}</span>
-                <span style={{ fontSize: 12 }}>{cat}</span>
+                <span style={{ fontSize: 12 }}>{meta.label}</span>
                 {on && <span style={{ fontSize: 10, color: 'var(--ok)' }}>✓</span>}
               </div>
             );
@@ -346,7 +346,7 @@ function SubConfigPanel({
 
       {/* Keywords */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>关注关键词</div>
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>คำสำคัญที่จับตา</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
           {(config.keywords || []).map((kw, i) => (
             <span key={i} className="sub-kw" style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'var(--bg)', border: '1px solid var(--line)' }}>
@@ -360,19 +360,19 @@ function SubConfigPanel({
             type="text"
             value={newKw}
             onChange={(e) => setNewKw(e.target.value)}
-            placeholder="输入关键词"
+            placeholder="กรอกคำสำคัญ"
             onKeyDown={(e) => { if (e.key === 'Enter') { onAddKeyword(newKw.trim()); setNewKw(''); } }}
             style={{ flex: 1, padding: '6px 10px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 12, outline: 'none' }}
           />
           <button className="btn btn-g" onClick={() => { onAddKeyword(newKw.trim()); setNewKw(''); }} style={{ fontSize: 11, padding: '4px 12px' }}>
-            添加
+            เพิ่ม
           </button>
         </div>
       </div>
 
       {/* Custom Feeds */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>自定义信息源</div>
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>แหล่งข่าวที่กำหนดเอง</div>
         {(config.custom_feeds || []).map((f, i) => (
           <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
             <span style={{ fontWeight: 600 }}>{f.name}</span>
@@ -382,7 +382,7 @@ function SubConfigPanel({
           </div>
         ))}
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <input placeholder="源名称" value={feedName} onChange={(e) => setFeedName(e.target.value)}
+          <input placeholder="ชื่อแหล่งข่าว" value={feedName} onChange={(e) => setFeedName(e.target.value)}
             style={{ width: 100, padding: '6px 8px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 11, outline: 'none' }} />
           <input placeholder="RSS / URL" value={feedUrl} onChange={(e) => setFeedUrl(e.target.value)}
             style={{ flex: 1, padding: '6px 8px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 11, outline: 'none' }} />
@@ -391,14 +391,14 @@ function SubConfigPanel({
             {allCats.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           <button className="btn btn-g" onClick={() => { onAddFeed(feedName, feedUrl, feedCat); setFeedName(''); setFeedUrl(''); }} style={{ fontSize: 11, padding: '4px 12px' }}>
-            添加
+            เพิ่ม
           </button>
         </div>
       </div>
 
       {/* Feishu Webhook */}
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>飞书 Webhook</div>
+        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Feishu Webhook</div>
         <input
           type="text"
           value={config.feishu_webhook || ''}
@@ -410,7 +410,7 @@ function SubConfigPanel({
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button className="tpl-go" onClick={onSave} style={{ fontSize: 12, padding: '6px 16px' }}>
-          💾 保存配置
+          💾 บันทึกการตั้งค่า
         </button>
       </div>
     </div>

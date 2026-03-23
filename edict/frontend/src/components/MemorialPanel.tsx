@@ -15,23 +15,23 @@ export default function MemorialPanel() {
   const exportMemorial = (t: Task) => {
     const fl = t.flow_log || [];
     let md = `# 📜 奏折 · ${t.title}\n\n`;
-    md += `- **任务编号**: ${t.id}\n`;
-    md += `- **状态**: ${t.state}\n`;
-    md += `- **负责部门**: ${t.org}\n`;
+    md += `- **รหัสงาน**: ${t.id}\n`;
+    md += `- **สถานะ**: ${t.state}\n`;
+    md += `- **กรมผู้รับผิดชอบ**: ${t.org}\n`;
     if (fl.length) {
       const startAt = fl[0].at ? fl[0].at.substring(0, 19).replace('T', ' ') : '未知';
       const endAt = fl[fl.length - 1].at ? fl[fl.length - 1].at.substring(0, 19).replace('T', ' ') : '未知';
-      md += `- **开始时间**: ${startAt}\n`;
-      md += `- **完成时间**: ${endAt}\n`;
+      md += `- **เวลาเริ่ม**: ${startAt}\n`;
+      md += `- **เวลาเสร็จสิ้น**: ${endAt}\n`;
     }
-    md += `\n## 流转记录\n\n`;
+    md += `\n## บันทึกลำดับราชการ\n\n`;
     for (const f of fl) {
       md += `- **${f.from}** → **${f.to}**  \n  ${f.remark}  \n  _${(f.at || '').substring(0, 19)}_\n\n`;
     }
-    if (t.output && t.output !== '-') md += `## 产出物\n\n\`${t.output}\`\n`;
+    if (t.output && t.output !== '-') md += `## ผลลัพธ์งาน\n\n\`${t.output}\`\n`;
     navigator.clipboard.writeText(md).then(
-      () => toast('✅ 奏折已复制为 Markdown', 'ok'),
-      () => toast('复制失败', 'err')
+      () => toast('✅ คัดลอกฎีกาเป็น Markdown แล้ว', 'ok'),
+      () => toast('คัดลอกไม่สำเร็จ', 'err')
     );
   };
 
@@ -39,11 +39,11 @@ export default function MemorialPanel() {
     <div>
       {/* Filter */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-        <span style={{ fontSize: 12, color: 'var(--muted)' }}>筛选：</span>
+        <span style={{ fontSize: 12, color: 'var(--muted)' }}>คัดแยก:</span>
         {[
-          { key: 'all', label: '全部' },
-          { key: 'Done', label: '✅ 已完成' },
-          { key: 'Cancelled', label: '🚫 已取消' },
+          { key: 'all', label: 'ทั้งหมด' },
+          { key: 'Done', label: '✅ เสร็จสิ้นแล้ว' },
+          { key: 'Cancelled', label: '🚫 ยกเลิกแล้ว' },
         ].map((f) => (
           <span
             key={f.key}
@@ -58,7 +58,7 @@ export default function MemorialPanel() {
       {/* List */}
       <div className="mem-list">
         {!mems.length ? (
-          <div className="mem-empty">暂无奏折 — 任务完成后自动生成</div>
+          <div className="mem-empty">ยังไม่มีฎีกา เมื่อภารกิจเสร็จสิ้นแล้วระบบจะจัดทำให้อัตโนมัติ</div>
         ) : (
           mems.map((t) => {
             const fl = t.flow_log || [];
@@ -74,7 +74,7 @@ export default function MemorialPanel() {
                     {stIcon} {t.title || t.id}
                   </div>
                   <div className="mem-sub">
-                    {t.id} · {t.org || ''} · 流转 {fl.length} 步
+                    {t.id} · {t.org || ''} · ผ่านลำดับราชการ {fl.length} ขั้น
                   </div>
                   <div className="mem-tags">
                     {depts.slice(0, 5).map((d) => (
@@ -165,7 +165,7 @@ function MemorialDetailModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
             <span className={`tag st-${st}`}>{STATE_LABEL[st] || st}</span>
             <span style={{ fontSize: 11, color: 'var(--muted)' }}>{t.org}</span>
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>流转 {fl.length} 步</span>
+            <span style={{ fontSize: 11, color: 'var(--muted)' }}>ผ่านลำดับราชการ {fl.length} ขั้น</span>
             {depts.map((d) => (
               <span className="mem-tag" key={d}>{d}</span>
             ))}
@@ -177,22 +177,22 @@ function MemorialDetailModal({
             </div>
           )}
 
-          {renderPhase('圣旨原文', '👑', originLog)}
-          {renderPhase('中书规划', '📋', planLog)}
-          {renderPhase('门下审议', '🔍', reviewLog)}
-          {renderPhase('六部执行', '⚔️', execLog)}
-          {renderPhase('汇总回奏', '📨', resultLog)}
+          {renderPhase('พระราชโองการต้นฉบับ', '👑', originLog)}
+          {renderPhase('การร่างจากสำนักจงซู', '📋', planLog)}
+          {renderPhase('การไต่ตรองจากสำนักเหมินเซี่ย', '🔍', reviewLog)}
+          {renderPhase('การปฏิบัติของหกกรม', '⚔️', execLog)}
+          {renderPhase('การรวบรวมและถวายรายงานกลับ', '📨', resultLog)}
 
           {t.output && t.output !== '-' && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>📦 产出物</div>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>📦 ผลลัพธ์งาน</div>
               <code style={{ fontSize: 11, wordBreak: 'break-all' }}>{t.output}</code>
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
             <button className="btn btn-g" onClick={() => onExport(t)} style={{ fontSize: 12, padding: '6px 16px' }}>
-              📋 复制奏折
+              📋 คัดลอกฎีกา
             </button>
           </div>
         </div>

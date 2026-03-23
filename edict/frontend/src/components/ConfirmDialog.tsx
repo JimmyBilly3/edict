@@ -21,11 +21,11 @@ export default function ConfirmDialog({ title, message, okLabel, okClass, onOk, 
           className="confirm-reason"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="输入原因（可留空）"
+          placeholder="โปรดระบุเหตุผล (เว้นว่างได้)"
           rows={2}
         />
         <div className="confirm-btns">
-          <button className="btn btn-g" onClick={onCancel}>取消</button>
+          <button className="btn btn-g" onClick={onCancel}>ยกเลิก</button>
           <button className={`btn btn-action ${okClass || ''}`} onClick={() => onOk(reason)}>
             {okLabel}
           </button>

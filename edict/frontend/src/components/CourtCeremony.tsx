@@ -34,18 +34,18 @@ export default function CourtCeremony() {
 
   const d = new Date();
   const days = ['日', '一', '二', '三', '四', '五', '六'];
-  const dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 · ${days[d.getDay()]}曜日`;
+  const dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 · วัน${days[d.getDay()]}`;
 
   return (
     <div className={`ceremony-bg${out ? ' out' : ''}`} onClick={skip}>
       <div className="crm-glow" />
-      <div className="crm-line1 in">🏛 早朝开始</div>
-      <div className="crm-line2 in">有事启奏，无事退朝</div>
+      <div className="crm-line1 in">🏛 เปิดท้องพระโรงยามอรุณ</div>
+      <div className="crm-line2 in">ผู้ใดมีราชกิจจงกราบทูล ผู้ใดไร้ราชกิจจงถอยออก</div>
       <div className="crm-line3 in">
-        待办 {pending} 件 · 已完成 {done} 件{overdue > 0 && ` · ⚠ 超期 ${overdue} 件`}
+        ค้างดำเนิน {pending} เรื่อง · เสร็จสิ้นแล้ว {done} เรื่อง{overdue > 0 && ` · ⚠ เกินกำหนด ${overdue} เรื่อง`}
       </div>
       <div className="crm-date in">{dateStr}</div>
-      <div className="crm-skip">点击任意处跳过</div>
+      <div className="crm-skip">กด ณ ตำแหน่งใดก็ได้เพื่อข้าม</div>
     </div>
   );
 }

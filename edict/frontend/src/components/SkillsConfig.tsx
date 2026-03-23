@@ -8,7 +8,7 @@ const COMMUNITY_SOURCES = [
     label: 'obra/superpowers',
     emoji: '⚡',
     stars: '66.9k',
-    desc: '完整开发工作流技能集',
+    desc: 'ชุดทักษะสำหรับงานพัฒนาแบบครบกระบวน',
     skills: [
       { name: 'brainstorming', url: 'https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/skills/brainstorming/SKILL.md' },
       { name: 'test-driven-development', url: 'https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/skills/test-driven-development/SKILL.md' },
@@ -25,8 +25,8 @@ const COMMUNITY_SOURCES = [
   {
     label: 'anthropics/skills',
     emoji: '🏛️',
-    stars: '官方',
-    desc: 'Anthropic 官方技能库',
+    stars: 'ทางการ',
+    desc: 'คลังทักษะทางการของ Anthropic',
     skills: [
       { name: 'docx', url: 'https://raw.githubusercontent.com/anthropics/skills/main/skills/docx/SKILL.md' },
       { name: 'pdf', url: 'https://raw.githubusercontent.com/anthropics/skills/main/skills/pdf/SKILL.md' },
@@ -44,7 +44,7 @@ const COMMUNITY_SOURCES = [
     label: 'ComposioHQ/awesome-claude-skills',
     emoji: '🌐',
     stars: '39.2k',
-    desc: '100+ 社区精选技能',
+    desc: 'ทักษะคัดสรรจากชุมชนกว่า 100 รายการ',
     skills: [
       { name: 'github-integration', url: 'https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/github-integration/SKILL.md' },
       { name: 'data-analysis', url: 'https://raw.githubusercontent.com/ComposioHQ/awesome-claude-skills/master/data-analysis/SKILL.md' },
@@ -92,22 +92,22 @@ export default function SkillsConfig() {
       const r = await api.remoteSkillsList();
       if (r.ok) setRemoteSkills(r.remoteSkills || []);
     } catch {
-      toast('远程技能列表加载失败', 'err');
+      toast('โหลดรายการทักษะระยะไกลไม่สำเร็จ', 'err');
     }
     setRemoteLoading(false);
   };
 
   const openSkill = async (agentId: string, skillName: string) => {
-    setSkillModal({ agentId, name: skillName, content: '⟳ 加载中…', path: '' });
+    setSkillModal({ agentId, name: skillName, content: '⟳ กำลังโหลด…', path: '' });
     try {
       const r = await api.skillContent(agentId, skillName);
       if (r.ok) {
         setSkillModal({ agentId, name: skillName, content: r.content || '', path: r.path || '' });
       } else {
-        setSkillModal({ agentId, name: skillName, content: '❌ ' + (r.error || '无法读取'), path: '' });
+        setSkillModal({ agentId, name: skillName, content: '❌ ' + (r.error || 'อ่านมิได้'), path: '' });
       }
     } catch {
-      setSkillModal({ agentId, name: skillName, content: '❌ 服务器连接失败', path: '' });
+      setSkillModal({ agentId, name: skillName, content: '❌ ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', path: '' });
     }
   };
 
@@ -123,14 +123,14 @@ export default function SkillsConfig() {
     try {
       const r = await api.addSkill(addForm.agentId, formData.name, formData.desc, formData.trigger);
       if (r.ok) {
-        toast(`✅ 技能 ${formData.name} 已添加到 ${addForm.agentLabel}`, 'ok');
+        toast(`✅ เพิ่มทักษะ ${formData.name} ให้ ${addForm.agentLabel} แล้ว`, 'ok');
         setAddForm(null);
         loadAgentConfig();
       } else {
-        toast(r.error || '添加失败', 'err');
+        toast(r.error || 'เพิ่มไม่สำเร็จ', 'err');
       }
     } catch {
-      toast('服务器连接失败', 'err');
+      toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err');
     }
     setSubmitting(false);
   };
@@ -143,16 +143,16 @@ export default function SkillsConfig() {
     try {
       const r = await api.addRemoteSkill(agentId, skillName, sourceUrl, description);
       if (r.ok) {
-        toast(`✅ 远程技能 ${skillName} 已添加到 ${agentId}`, 'ok');
+        toast(`✅ เพิ่มทักษะระยะไกล ${skillName} ให้ ${agentId} แล้ว`, 'ok');
         setAddRemoteForm(false);
         setRemoteFormData({ agentId: '', skillName: '', sourceUrl: '', description: '' });
         loadRemoteSkills();
         loadAgentConfig();
       } else {
-        toast(r.error || '添加失败', 'err');
+        toast(r.error || 'เพิ่มไม่สำเร็จ', 'err');
       }
     } catch {
-      toast('服务器连接失败', 'err');
+      toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err');
     }
     setRemoteSubmitting(false);
   };
@@ -163,13 +163,13 @@ export default function SkillsConfig() {
     try {
       const r = await api.updateRemoteSkill(skill.agentId, skill.skillName);
       if (r.ok) {
-        toast(`✅ 技能 ${skill.skillName} 已更新`, 'ok');
+        toast(`✅ อัปเดตทักษะ ${skill.skillName} แล้ว`, 'ok');
         loadRemoteSkills();
       } else {
-        toast(r.error || '更新失败', 'err');
+        toast(r.error || 'อัปเดตไม่สำเร็จ', 'err');
       }
     } catch {
-      toast('服务器连接失败', 'err');
+      toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err');
     }
     setUpdatingSkill(null);
   };
@@ -180,20 +180,20 @@ export default function SkillsConfig() {
     try {
       const r = await api.removeRemoteSkill(skill.agentId, skill.skillName);
       if (r.ok) {
-        toast(`🗑️ 技能 ${skill.skillName} 已移除`, 'ok');
+        toast(`🗑️ ถอนทักษะ ${skill.skillName} แล้ว`, 'ok');
         loadRemoteSkills();
         loadAgentConfig();
       } else {
-        toast(r.error || '移除失败', 'err');
+        toast(r.error || 'ถอนทักษะไม่สำเร็จ', 'err');
       }
     } catch {
-      toast('服务器连接失败', 'err');
+      toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err');
     }
     setRemovingSkill(null);
   };
 
   const handleQuickImport = async (skillUrl: string, skillName: string) => {
-    if (!quickPickAgent) { toast('请先选择目标 Agent', 'err'); return; }
+    if (!quickPickAgent) { toast('โปรดเลือกเอเจนต์เป้าหมายก่อน', 'err'); return; }
     try {
       const r = await api.addRemoteSkill(quickPickAgent, skillName, skillUrl, '');
       if (r.ok) {
@@ -201,15 +201,15 @@ export default function SkillsConfig() {
         loadRemoteSkills();
         loadAgentConfig();
       } else {
-        toast(r.error || '导入失败', 'err');
+        toast(r.error || 'นำเข้าไม่สำเร็จ', 'err');
       }
     } catch {
-      toast('服务器连接失败', 'err');
+      toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err');
     }
   };
 
   if (!agentConfig?.agents) {
-    return <div className="empty">无法加载</div>;
+    return <div className="empty">โหลดข้อมูลมิได้</div>;
   }
 
   // ── 本地技能面板 ──

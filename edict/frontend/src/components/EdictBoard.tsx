@@ -1,4 +1,4 @@
-import { useStore, isEdict, isArchived, getPipeStatus, stateLabel, deptColor, PIPE } from '../store';
+import { useStore, isEdict, isArchived, getPipeStatus, stateLabel, deptColor, PIPE, displayDept } from '../store';
 import { api, type Task } from '../api';
 
 // 排序权重
@@ -45,19 +45,19 @@ function EdictCard({ task }: { task: Task }) {
     e.stopPropagation();
     if (action === 'stop' || action === 'cancel') {
       // Use confirm dialog via store (will implement with ConfirmDialog)
-      const reason = prompt(action === 'stop' ? '请输入叫停原因：' : '请输入取消原因：');
+      const reason = prompt(action === 'stop' ? 'โปรดระบุเหตุแห่งการสั่งพัก:' : 'โปรดระบุเหตุแห่งการยกเลิก:');
       if (reason === null) return;
       try {
         const r = await api.taskAction(task.id, action, reason);
-        if (r.ok) { toast(r.message || '操作成功'); loadAll(); }
-        else toast(r.error || '操作失败', 'err');
-      } catch { toast('服务器连接失败', 'err'); }
+        if (r.ok) { toast(r.message || 'ดำเนินการสำเร็จ'); loadAll(); }
+        else toast(r.error || 'ดำเนินการไม่สำเร็จ', 'err');
+      } catch { toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err'); }
     } else if (action === 'resume') {
       try {
         const r = await api.taskAction(task.id, 'resume', '恢复执行');
-        if (r.ok) { toast(r.message || '已恢复'); loadAll(); }
-        else toast(r.error || '操作失败', 'err');
-      } catch { toast('服务器连接失败', 'err'); }
+        if (r.ok) { toast(r.message || 'กลับมาดำเนินต่อแล้ว'); loadAll(); }
+        else toast(r.error || 'ดำเนินการไม่สำเร็จ', 'err');
+      } catch { toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err'); }
     }
   };
 
@@ -65,9 +65,9 @@ function EdictCard({ task }: { task: Task }) {
     e.stopPropagation();
     try {
       const r = await api.archiveTask(task.id, !task.archived);
-      if (r.ok) { toast(r.message || '操作成功'); loadAll(); }
-      else toast(r.error || '操作失败', 'err');
-    } catch { toast('服务器连接失败', 'err'); }
+      if (r.ok) { toast(r.message || 'ดำเนินการสำเร็จ'); loadAll(); }
+      else toast(r.error || 'ดำเนินการไม่สำเร็จ', 'err');
+    } catch { toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err'); }
   };
 
   return (
@@ -77,13 +77,13 @@ function EdictCard({ task }: { task: Task }) {
     >
       <MiniPipe task={task} />
       <div className="ec-id">{task.id}</div>
-      <div className="ec-title">{task.title || '(无标题)'}</div>
+      <div className="ec-title">{task.title || '(ไร้ชื่อเรื่อง)'}</div>
       <div className="ec-meta">
         <span className={`tag ${stCls}`}>{stateLabel(task)}</span>
         {task.org && <span className={`tag ${deptCls}`}>{task.org}</span>}
         {curStage && (
           <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-            当前: <b style={{ color: deptColor(curStage.dept) }}>{curStage.dept} · {curStage.action}</b>
+            ขณะนี้: <b style={{ color: deptColor(curStage.dept) }}>{displayDept(curStage.dept)} · {curStage.action}</b>
           </span>
         )}
       </div>
@@ -108,7 +108,7 @@ function EdictCard({ task }: { task: Task }) {
               {i + 1}
             </span>
           ))}
-          <span style={{ color: 'var(--muted)', fontSize: 10 }}>第 {task.review_round} 轮磋商</span>
+          <span style={{ color: 'var(--muted)', fontSize: 10 }}>ทบทวนร่วมกันรอบที่ {task.review_round}</span>
         </div>
       )}
       {todoTotal > 0 && (
@@ -117,7 +117,7 @@ function EdictCard({ task }: { task: Task }) {
           <div className="ec-todo-track">
             <div className="ec-todo-fill" style={{ width: `${Math.round((todoDone / todoTotal) * 100)}%` }} />
           </div>
-          <span>{todoDone === todoTotal ? '✅ 全部完成' : '🔄 进行中'}</span>
+          <span>{todoDone === todoTotal ? '✅ ครบถ้วนแล้ว' : '🔄 ยังดำเนินอยู่'}</span>
         </div>
       )}
       <div className="ec-footer">
@@ -134,18 +134,18 @@ function EdictCard({ task }: { task: Task }) {
       <div className="ec-actions" onClick={(e) => e.stopPropagation()}>
         {canStop && (
           <>
-            <button className="mini-act" onClick={(e) => handleAction('stop', e)}>⏸ 叫停</button>
-            <button className="mini-act danger" onClick={(e) => handleAction('cancel', e)}>🚫 取消</button>
+            <button className="mini-act" onClick={(e) => handleAction('stop', e)}>⏸ พักไว้ก่อน</button>
+            <button className="mini-act danger" onClick={(e) => handleAction('cancel', e)}>🚫 ยกเลิก</button>
           </>
         )}
         {canResume && (
-          <button className="mini-act" onClick={(e) => handleAction('resume', e)}>▶ 恢复</button>
+          <button className="mini-act" onClick={(e) => handleAction('resume', e)}>▶ ดำเนินต่อ</button>
         )}
         {archived && !task.archived && (
-          <button className="mini-act" onClick={handleArchive}>📦 归档</button>
+          <button className="mini-act" onClick={handleArchive}>📦 เก็บเข้าแฟ้ม</button>
         )}
         {task.archived && (
-          <button className="mini-act" onClick={handleArchive}>📤 取消归档</button>
+          <button className="mini-act" onClick={handleArchive}>📤 ถอนออกจากแฟ้ม</button>
         )}
       </div>
     </div>
@@ -174,53 +174,53 @@ export default function EdictBoard() {
   const unArchivedDone = allEdicts.filter((t) => !t.archived && ['Done', 'Cancelled'].includes(t.state));
 
   const handleArchiveAll = async () => {
-    if (!confirm('将所有已完成/已取消的旨意移入归档？')) return;
+    if (!confirm('จะย้ายราชโองการที่เสร็จสิ้นหรือยกเลิกแล้วทั้งหมดเข้าแฟ้มใช่หรือไม่?')) return;
     try {
       const r = await api.archiveAllDone();
-      if (r.ok) { toast(`📦 ${r.count || 0} 道旨意已归档`); loadAll(); }
-      else toast(r.error || '批量归档失败', 'err');
-    } catch { toast('服务器连接失败', 'err'); }
+      if (r.ok) { toast(`📦 เก็บเข้าแฟ้มแล้ว ${r.count || 0} ฉบับ`); loadAll(); }
+      else toast(r.error || 'เก็บเข้าแฟ้มแบบรวมไม่สำเร็จ', 'err');
+    } catch { toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err'); }
   };
 
   const handleScan = async () => {
     try {
       const r = await api.schedulerScan();
-      if (r.ok) toast(`🧭 太子巡检完成：${r.count || 0} 个动作`);
-      else toast(r.error || '巡检失败', 'err');
+      if (r.ok) toast(`🧭 การตรวจราชการเสร็จสิ้น ${r.count || 0} รายการ`);
+      else toast(r.error || 'ตรวจราชการไม่สำเร็จ', 'err');
       loadAll();
-    } catch { toast('服务器连接失败', 'err'); }
+    } catch { toast('ไม่อาจเชื่อมต่อเซิร์ฟเวอร์', 'err'); }
   };
 
   return (
     <div>
       {/* Archive Bar */}
       <div className="archive-bar">
-        <span className="ab-label">筛选:</span>
+        <span className="ab-label">คัดแยก:</span>
         {(['active', 'archived', 'all'] as const).map((f) => (
           <button
             key={f}
             className={`ab-btn ${edictFilter === f ? 'active' : ''}`}
             onClick={() => setEdictFilter(f)}
           >
-            {f === 'active' ? '活跃' : f === 'archived' ? '归档' : '全部'}
+            {f === 'active' ? 'กำลังดำเนิน' : f === 'archived' ? 'เข้าแฟ้ม' : 'ทั้งหมด'}
           </button>
         ))}
         {unArchivedDone.length > 0 && (
-          <button className="ab-btn" onClick={handleArchiveAll}>📦 一键归档</button>
+          <button className="ab-btn" onClick={handleArchiveAll}>📦 เก็บเข้าแฟ้มทั้งหมด</button>
         )}
         <span className="ab-count">
-          活跃 {activeEdicts.length} · 归档 {archivedEdicts.length} · 共 {allEdicts.length}
+          กำลังดำเนิน {activeEdicts.length} · เข้าแฟ้ม {archivedEdicts.length} · รวม {allEdicts.length}
         </span>
-        <button className="ab-scan" onClick={handleScan}>🧭 太子巡检</button>
+        <button className="ab-scan" onClick={handleScan}>🧭 ตรวจราชการ</button>
       </div>
 
       {/* Grid */}
       <div className="edict-grid">
         {edicts.length === 0 ? (
           <div className="empty" style={{ gridColumn: '1/-1' }}>
-            暂无旨意<br />
+            ยังไม่มีราชโองการ<br />
             <small style={{ fontSize: 11, marginTop: 6, display: 'block', color: 'var(--muted)' }}>
-              通过飞书向太子发送任务，太子分拣后转中书省处理
+              สามารถส่งงานเข้ามาทาง Feishu เพื่อให้องค์รัชทายาทคัดกรอง แล้วส่งต่อให้สำนักจงซูดำเนินการ
             </small>
           </div>
         ) : (
