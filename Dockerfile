@@ -38,7 +38,9 @@ USER appuser
 
 EXPOSE 7891
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python3 -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:7891/healthz')" || exit 1
+ENV PORT=7891
 
-CMD ["python3", "dashboard/server.py", "--host", "0.0.0.0", "--port", "7891"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+  CMD python3 -c "import os, urllib.request; port = os.environ.get('PORT', '7891'); urllib.request.urlopen(f'http://127.0.0.1:{port}/healthz')" || exit 1
+
+CMD ["sh", "-c", "python3 dashboard/server.py --host 0.0.0.0 --port ${PORT:-7891}"]
